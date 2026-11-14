@@ -53,6 +53,16 @@ CREATE TABLE IF NOT EXISTS layer_summary (
   FOREIGN KEY(domain_id) REFERENCES domains(id)
 );
 
+CREATE TABLE IF NOT EXISTS closed_biz_days (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  domain_id INTEGER NOT NULL,
+  biz_day TEXT NOT NULL,
+  reason TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(domain_id, biz_day),
+  FOREIGN KEY(domain_id) REFERENCES domains(id)
+);
+
 CREATE TABLE IF NOT EXISTS layer_jobs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   domain_id INTEGER NOT NULL,
@@ -62,6 +72,8 @@ CREATE TABLE IF NOT EXISTS layer_jobs (
   in_count INTEGER NOT NULL DEFAULT 0,
   out_count INTEGER NOT NULL DEFAULT 0,
   drop_count INTEGER NOT NULL DEFAULT 0,
+  reject_count INTEGER NOT NULL DEFAULT 0,
+  biz_day TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY(domain_id) REFERENCES domains(id)
 );
@@ -82,10 +94,20 @@ CREATE TABLE IF NOT EXISTS reconcile_reports (
 """
 
 
+def _migrate(conn) -> None:
+    """对旧库补齐后续版本新增的列，SQLite 只能逐列 ADD COLUMN。"""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(layer_jobs)").fetchall()}
+    if "reject_count" not in cols:
+        conn.execute("ALTER TABLE layer_jobs ADD COLUMN reject_count INTEGER NOT NULL DEFAULT 0")
+    if "biz_day" not in cols:
+        conn.execute("ALTER TABLE layer_jobs ADD COLUMN biz_day TEXT")
+
+
 def init_db() -> None:
     conn = connect()
     try:
         conn.executescript(SCHEMA)
+        _migrate(conn)
         row = conn.execute("SELECT COUNT(*) AS c FROM domains").fetchone()
         if int(row["c"]) == 0:
             _seed_domain(conn)

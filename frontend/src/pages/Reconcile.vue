@@ -63,6 +63,7 @@ async function run() {
           <tr><th>汇总金额合计</th><td>{{ r.detail.汇总金额合计 }}</td></tr>
           <tr><th>键对齐</th><td>{{ r.detail.键对齐 ? '是' : '否' }}</td></tr>
           <tr><th>金额漂移</th><td>{{ r.detail.金额漂移 }}</td></tr>
+          <tr><th>已关闭业务日</th><td>{{ (r.detail.已关闭业务日 || []).join('、') || '无' }}</td></tr>
           <tr><th>生成时间</th><td>{{ r.created_at }}</td></tr>
         </tbody>
       </table>
